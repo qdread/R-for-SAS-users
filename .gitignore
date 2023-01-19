@@ -1,0 +1,14 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Fitted brms model objects
+*.rds
+
+# html and PDF files from rendered RMD and QMD
+*.html
+*.pdf
+
+# directory generated when rendering QMD
+*_files/
