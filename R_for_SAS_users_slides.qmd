@@ -1,0 +1,22 @@
+---
+title: "R for SAS users"
+format: 
+  revealjs:
+    code-overflow: wrap
+execute:
+  echo: true
+  eval: false
+---
+
+```{r sas and rmarkdown setup, echo = FALSE}
+library(SASmarkdown)
+saspath <- "C:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe"
+sasopts <- "-nosplash -ls 75"
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  engine.path = 
+    list(sas = saspath, sashtml5 = saspath),
+  engine.opts = 
+    list(sas = sasopts, sashtml5 = sasopts)
+)
+```

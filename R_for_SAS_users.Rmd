@@ -1,0 +1,154 @@
+---
+title: "R for SAS users"
+author: "Quentin D. Read"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r sas and rmarkdown setup, include = FALSE}
+library(SASmarkdown)
+saspath <- "C:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe"
+sasopts <- "-nosplash -ls 75"
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  engine.path = 
+    list(sas = saspath, sashtml5 = saspath),
+  engine.opts = 
+    list(sas = sasopts, sashtml5 = sasopts)
+)
+```
+
+# Introduction
+
+## What is this workshop?
+
+This workshop is intended for SAS users who want to learn R. The people who will get the most out of this course are practicing researchers who have a decent working knowledge of SAS, and of basic statistical analysis (descriptive stats and regression models) as it applies to their field. 
+
+[Download the worksheet for this lesson here](https://quentinread.com/SEAStats/brms_crash_course/brms_crash_course_worksheet.R).
+
+## What will you learn from this workshop?
+
+### Conceptual learning objectives
+
+During this workshop, you will ...
+
+- Learn the similarities and differences between SAS and R, both different tools for the job
+- Get introduced to what R packages are, in particular the "tidyverse"
+- Learn which common SAS statistical procedures correspond to which R packages/functions
+- Learn about R and SAS' capabilities for Bayesian model fitting, and generating pretty reports and presentations
+
+### Practical skills
+
+In this workshop, participants will go through a "data to doc" pipeline in R, comparing R code to SAS code each step of the way. As you go through the pipeline, you will ...
+
+- Import the data from a CSV file
+- Clean and reshape the data
+- Calculate some summary statistics and make some exploratory plots
+- Fit a linear model, a generalized linear model, and a generalized linear mixed-effects model
+- Make post hoc comparisons
+- Make plots and tables of results
+
+## How to follow along with this workshop
+
+- Slides and text version of lessons are online
+- Fill in code in the worksheet (replace `...` with code)
+- You can always copy and paste code from text version of lesson if you fall behind
+
+# Background
+
+## R versus SAS
+
+- SAS has been around longer than R (spun off from NC State in 1976, while R was first released in 1993)
+- R is free and open-source. This is honestly an unalloyed advantage for R
+- SAS is top-down, R is decentralized. This has pros and cons
+- R has a diversity of packages, with a lot of different uses, and develops more quickly
+- The main other alternative is Python which seems to be more common in "data science" versus "stats," and industry versus academia/government
+
+The bottom line is that they are both tools that can be used to do a job. Neither is perfect and they both have advantages and disadvantages. Some people prefer one to the other, and some people have more experience with one than the other. But I strongly recommend that new ARS researchers just starting their "stats and data science journey" begin with R. This is thanks to its superiority for open and reproducible science, the fact that it is free and thus you will be able to use it even if you move to an institution that doesn't have a SAS subscription, its greater diversity of tools and bag of tricks, and because it just does some stuff flat out better.
+
+All of that said, the point of this workshop is not to convert people from SAS to R. It is simply to give SAS users some exposure to R functionality and demonstrate how you can translate familiar statistical procedures in SAS into R.
+
+## R packages
+
+What are they?
+
+INSERT TEXT HERE
+
+## SAS procedures vs. R packages/functions: an overview table
+
+INSERT TABLE HERE
+
+Okay, that's enough lecturing. Let's actually do some coding.
+
+# Data to doc pipeline
+
+A typical "pipeline" to get from raw data at one end, to a finished document (report or presentation) at the other, includes the following steps, whether you are working in SAS or R.
+
+- Import the data from a file
+- Clean, manipulate, and sort the data
+- Make exploratory graphs and tables
+- Fit statistical models
+- Look at model diagnostics to make sure our models are valid
+- Extract predictions from the statistical models
+- Make graphs and tables of model predictions
+- Put results into a document
+
+We will go through each step of the pipeline. In each step, first we'll look at some SAS code that does a particular thing (without going into detailed explanation of how the SAS code works), then we'll co-create some R code that does that same thing while explaining in detail how each bit of the R code works.
+
+We will use an example dataset for this lesson that 
+
+# Test Daniel's code
+
+### `SAS` (`PROC GLIMMIX`)
+
+```{sashtml5, collectcode = FALSE, SASecho = FALSE}
+ods html5 style = htmlblue;
+data power_example_1;
+  input trt mu;
+  do obs = 1 to 5;
+    output;
+  end;
+datalines;
+0 20
+1 25
+2 25
+;
+
+proc glimmix data = power_example_1;
+  class trt;
+  model mu = trt;
+  parms (9) / hold = 1;
+  contrast 'control vs experimental' trt 2 -1 -1;
+  contrast 'control vs experimental 1' trt 1 -1;
+  contrast 'control vs experimental 2' trt 1 0 -1;
+  contrast 'experimental 1 vs experimental 2' trt 0 1 -1;
+  lsmeans trt / diff cl;
+  ods output tests3 = F_overall contrasts = F_contrasts;
+run;
+
+data power;
+  set F_overall F_contrasts;
+  nc_parm = numdf * Fvalue;
+  alpha = 0.05;
+  F_crit = Finv(1 - alpha, numdf, dendf, 0);
+  Power = 1 - probF(F_crit, numdf, dendf, nc_parm);
+run;
+
+proc print data = power;
+run;
+```
+
+### `R` (`glmmTMB` + `emmeans`)
+
+```{r}
+library(glmmTMB)
+library(emmeans)
+power_example_1 <- data.frame(obs = rep(1:5, 3), trt = factor(rep(0:2, each = 5)), 
+                              mu = rep(c(20, 25, 25), each = 5))
+ex16.1 <- glmmTMB(mu ~ trt, power_example_1, start = list(betad = log(9)), 
+                  map = list(betad = factor(NA)))
+```
