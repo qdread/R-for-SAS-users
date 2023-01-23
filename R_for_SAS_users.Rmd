@@ -80,6 +80,13 @@ INSERT TEXT HERE
 
 ## SAS procedures vs. R packages/functions: an overview table
 
+There are a diversity of R packages and functions for each of these tasks but I am showing you my "favorite" or recommended alternatives in bold.
+
+```{r, echo = FALSE}
+
+```
+
+
 INSERT TABLE HERE
 
 Okay, that's enough lecturing. Let's actually do some coding.
