@@ -12,7 +12,10 @@ ggplot(d2, aes(x=year,y=yield,color=state)) + geom_line()
 lmer(yield ~ year + (year|state))
 lmer(yield ~ year + (1|state), data = d2)
 
-write.csv(d, 'data/NASS_soybean.csv', row.names = FALSE)
+# Resort so it's by state and year
+dsort <- d[order(d$state, d$year),]
+
+write.csv(dsort, 'data/NASS_soybean.csv', row.names = FALSE)
 
 data(edwards.oats, package = 'agridat')
 d_oat <- edwards.oats

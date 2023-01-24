@@ -30,6 +30,8 @@ This workshop is intended for SAS users who want to learn R. The people who will
 
 [Download the worksheet for this lesson here](https://quentinread.com/SEAStats/brms_crash_course/brms_crash_course_worksheet.R).
 
+*A word of warning*: I have much more experience working with R compared to SAS. So if you notice any issues or glaring flaws in the SAS code, chalk that up to my poor SAS skills! The SAS code is provided here mainly for comparison purposes, so that you will be able to better understand what the R code is trying to do by comparing it to a familiar bit of SAS code.
+
 ## What will you learn from this workshop?
 
 ### Conceptual learning objectives
@@ -57,6 +59,7 @@ In this workshop, participants will go through a "data to doc" pipeline in R, co
 - Slides and text version of lessons are online
 - Fill in code in the worksheet (replace `...` with code)
 - You can always copy and paste code from text version of lesson if you fall behind
+- Notes on best practices will be marked with **PROTIP** as we go along!
 
 # Background
 
@@ -106,56 +109,161 @@ A typical "pipeline" to get from raw data at one end, to a finished document (re
 
 We will go through each step of the pipeline. In each step, first we'll look at some SAS code that does a particular thing (without going into detailed explanation of how the SAS code works), then we'll co-create some R code that does that same thing while explaining in detail how each bit of the R code works.
 
-We will use an example dataset for this lesson that 
+We will use example datasets for this lesson from the R package [**agridat**](https://kwstat.github.io/agridat/), which is a curated collection of datasets from agricultural sciences. (You can learn a lot from it whether or not you are an "R person!")
 
-# Test Daniel's code
+## Load R packages
 
-### `SAS` (`PROC GLIMMIX`)
+Here we'll load the R packages we are going to work with today. 
 
-```{sashtml5, collectcode = FALSE, SASecho = FALSE}
-ods html5 style = htmlblue;
-data power_example_1;
-  input trt mu;
-  do obs = 1 to 5;
-    output;
-  end;
-datalines;
-0 20
-1 25
-2 25
-;
-
-proc glimmix data = power_example_1;
-  class trt;
-  model mu = trt;
-  parms (9) / hold = 1;
-  contrast 'control vs experimental' trt 2 -1 -1;
-  contrast 'control vs experimental 1' trt 1 -1;
-  contrast 'control vs experimental 2' trt 1 0 -1;
-  contrast 'experimental 1 vs experimental 2' trt 0 1 -1;
-  lsmeans trt / diff cl;
-  ods output tests3 = F_overall contrasts = F_contrasts;
-run;
-
-data power;
-  set F_overall F_contrasts;
-  nc_parm = numdf * Fvalue;
-  alpha = 0.05;
-  F_crit = Finv(1 - alpha, numdf, dendf, 0);
-  Power = 1 - probF(F_crit, numdf, dendf, nc_parm);
-run;
-
-proc print data = power;
-run;
-```
-
-### `R` (`glmmTMB` + `emmeans`)
+> **PROTIP**: It's good practice to load all necessary packages for a script at the beginning. Among other benefits, this ensures that if anyone who's running the script needs to install one or more packages to run your script, they can do that all at once instead of having to interrupt the workflow later to install packages.
 
 ```{r}
-library(glmmTMB)
-library(emmeans)
-power_example_1 <- data.frame(obs = rep(1:5, 3), trt = factor(rep(0:2, each = 5)), 
-                              mu = rep(c(20, 25, 25), each = 5))
-ex16.1 <- glmmTMB(mu ~ trt, power_example_1, start = list(betad = log(9)), 
-                  map = list(betad = factor(NA)))
+library(tidyverse)
 ```
+
+
+## Import the data from a file
+
+The example data for this lesson are hosted on GitHub. 
+
+> **PROTIP**: Notice the data are in CSV (comma-separated values) format. Although both SAS and R have the capability to read data directly from Microsoft Excel files (.xlsx), I recommend using CSV wherever possible. This is a good idea for a couple reasons: first, it is a plain-text format that works on any operating system, and is not a proprietary Microsoft format. Also, it does not allow formatting so you can't be tempted to encode important information in formatting. For example, highlighting cells to flag them -- a better way would be to add an additional column with a text label for the flag that can be read in to SAS or R more easily.
+
+### SAS: `proc import`
+
+Some people like to import data in the `data` step in SAS, or use `datalines;`, but I recommend using `proc import`.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+ods html5 style = htmlblue;
+filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv";
+proc import datafile=csvFile out=nass_soybeans replace dbms=csv; run;
+```
+
+### R: `read_csv`
+
+```{r}
+nass_soybeans <- read_csv('https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv')
+```
+## Clean, manipulate, and sort the data
+
+First, let's look at what we are working with. The SAS "dataset" `nass_soybeans` and the R "data frame" `nass_soybeans` are very similar objects. They both have ~2500 rows of data and 4 named columns.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```
+
+```{r}
+head(nass_soybeans, 10)
+summary(nass_soybeans)
+glimpse(nass_soybeans)
+```
+
+Let's say we wanted to work with only the data from the states in the Southeast region. In SAS we usually use the `data` step to create subsets of the data, whereas in R tidyverse, we use the `filter()` function from the **dplyr** package. FIXME MORE WORDS
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+data se_soybeans; set nass_soybeans;
+	where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
+run;
+```
+
+```{r}
+se_states <- c('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee')
+
+se_soybeans <- filter(nass_soybeans, state %in% se_states)
+```
+
+use data step and mutate to create a total_yield column FIXME MORE AND BETTER WORDS
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+data se_soybeans; set se_soybeans;
+	total_yield = acres * yield;
+run;
+```
+
+```{r}
+se_soybeans <- mutate(se_soybeans, total_yield = acres * yield)
+```
+
+We can make this more concise in both SAS and R. In SAS, we would combine the row subsetting and the operation to create a new calculated column into the same `data` step. In R, we can put them into one statement by using the "pipe" operator: `%>%`. FIXMEEEEE MORE WORDS
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+data se_soybeans; set nass_soybeans;
+  where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
+	total_yield = acres * yield;
+run;
+```
+
+```{r}
+se_soybeans <- nass_soybeans %>%
+  filter(state %in% se_states) %>%
+  mutate(total_yield = acres * yield)
+```
+
+Finally, our data is sorted first by state and then by year. Let's say we wanted to sort the rows first by year and then by state. We can sort the data in SAS using `proc sort`. In R tidyverse, we can use the `arrange()` function from **dplyr**. 
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc sort data = se_soybeans;
+	by year state;
+run;
+```
+
+```{r}
+se_soybeans <- arrange(se_soybeans, year, state)
+```
+
+We can even put the `filter()`, `mutate()`, and `arrange()` operations into the same pipe statement.
+
+```{r}
+se_soybeans <- nass_soybeans %>%
+  filter(state %in% se_states) %>%
+  mutate(total_yield = acres * yield) %>%
+  arrange(year, state)
+```
+
+This dataset is in a format where each row is a unique observation: measurements of soybean harvested acreage and yield in bushels per acre, identified by a unique combination of year and state. The R tidyverse packages call this format "tidy" data.
+
+However, the long and skinny format of most "tidy" datasets is not ideal for visualizing the data in a table. We might want to reshape the data into wide format. In SAS we might use `proc transpose`, while in R tidyverse we use `pivot_wider()`. Let's do this for only the `total_yield` column with the years going down the rows and the states each getting a separate column. 
+
+Notice how the SAS and R statements are really pretty similar, it's just slightly different syntax and different names of the arguments. For example in `proc transpose` the `id` means which column will identify the columns, whereas in `pivot_wider()`, `id_cols` means which column will identify the rows!
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc transpose data = se_soybeans out = total_yield_wide;
+	by year; id state; var total_yield;
+run;
+```
+
+```{r}
+total_yield_wide <- se_soybeans %>%
+  pivot_wider(id_cols = year, names_from = state, values_from = total_yield)
+```
+
+> **PROTIP**: With `proc transpose`, we had to make sure the data was sorted by year and then state to transpose it in this way, so that the `by` groups are in contiguous blocks. R's `pivot_wider()` has no such requirement.
+
+Later I'll show how to display this in a "pretty" format.
+
+We can pivot from a wide to a long format as well. In SAS we'd use `proc transpose` again, versus `pivot_longer()` in R tidyverse.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc transpose data = total_yield_wide out = total_yield_long;
+	by year;
+run;
+```
+
+```{r}
+total_yield_long <- total_yield_wide %>%
+  pivot_longer(-year, names_to = 'state', values_to = 'total_yield')
+```
+
+Notice in both cases we get more rows than we started with because Florida is missing data for some of the years. Those rows with missing data are now explicitly included in the new long-format dataset/data frame. Also note that in SAS you would have to do an additional `data` step to rename the columns to what they were before; in R we can do this more easily inside the `pivot_longer()` statement.
+
+## Make exploratory graphs
+
+## Make tables of summary statistics
+
+## Fit statistical models
+
+### Look at model diagnostics
+
+## Extract predictions from models
+
+## Make graphs and tables of model predictions
+
+## Put results into a document
