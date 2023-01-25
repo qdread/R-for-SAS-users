@@ -135,7 +135,7 @@ Some people like to import data in the `data` step in SAS, or use `datalines;`, 
 ```{sashtml5, collectcode = TRUE, SASecho = FALSE}
 ods html5 style = htmlblue;
 filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv";
-proc import datafile=csvFile out=nass_soybeans replace dbms=csv; run;
+proc import datafile=csvFile out=nass_soybeans replace dbms=csv; guessingrows=2000; run;
 ```
 
 ### R: `read_csv`
@@ -148,6 +148,8 @@ nass_soybeans <- read_csv('https://github.com/qdread/R-for-SAS-users/raw/main/da
 First, let's look at what we are working with. The SAS "dataset" `nass_soybeans` and the R "data frame" `nass_soybeans` are very similar objects. They both have ~2500 rows of data and 4 named columns.
 
 ```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc print data = nass_soybeans(obs = 10); run;
+proc contents data = nass_soybeans; run;
 ```
 
 ```{r}
@@ -256,9 +258,89 @@ Notice in both cases we get more rows than we started with because Florida is mi
 
 ## Make exploratory graphs
 
+There are a lot of books and online tutorials out there about how to make great data visualizations in R, so here I'll just provide you a couple of examples. Let's say we wanted to plot the time series of total yield for four of the states as different colored lines on the same plot, with a log scale y axis. Here is a way to do it in SAS.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc sgplot data=se_soybeans;
+	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
+	series x=year y=total_yield / group=state; 
+	yaxis type=log label='total yield (bu)';
+run;
+```
+
+And in R, we use `ggplot()`.
+
+```{r}
+fourstates <- filter(se_soybeans, state %in% c('Arkansas', 'Tennessee', 'North Carolina', 'Georgia'))
+
+ggplot(fourstates, aes(x = year, y = total_yield, color = state)) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  scale_y_log10()
+```
+
+Alternatively, we could plot each of the time series on a separate panel. In SAS this requires a separate procedure but in R the existing `ggplot()` statement can be modified.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc sgpanel data=se_soybeans;
+	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
+	panelby state;
+	series x=year y=total_yield;
+	rowaxis type=log label='total yield (bu)';
+run;
+```
+
+```{r}
+ggplot(fourstates, aes(x = year, y = total_yield)) +
+  facet_wrap(~ state) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  scale_y_log10()
+```
+
+
 ## Make tables of summary statistics
 
+Let's say we want to know the total acreage harvested per year, the total yield in bushels, and the weighted mean of yield per acre across states (weighted by acreage harvested), for every 10th year. In SAS we can use `proc sql` to do this -- there are other ways but that's probably the most concise. In R tidyverse, we can calculate those different summary stats with a piped statement: `filter()` to retain only the rows where year is divisible by 10, `group_by()` to identify the column by which we're grouping the data, and `summarize()` which contains a comma-separated list of summary statistics to calculate. 
+
+> **PROTIP**: Notice the similarities between `proc sql` and the R tidyverse code. That's because the tidyverse syntax was partially inspired by SQL.
+
+> **PROTIP 2**: Notice that in SAS, a single equal sign `=` is used to test whether two values are equal, while in R (and in many other languages such as C and Python) you use the double equal sign `==`.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc sql;
+	select 
+		year,
+		sum(acres) as grand_total_acres,
+		sum(total_yield) as grand_total_yield,
+		sum(yield * acres) / sum(acres) as mean_yield
+	from se_soybeans
+	where mod(year, 10) = 0
+	group by year;
+quit;
+```
+
+```{r}
+yearly_totals <- se_soybeans %>%
+  filter(year %% 10 == 0) %>%
+  group_by(year) %>%
+  summarize(
+    grand_total_acres = sum(acres),
+    grand_total_yield = sum(total_yield),
+    mean_yield = weighted.mean(yield, acres)
+  )
+
+yearly_totals
+```
+
+
 ## Fit statistical models
+
+Here's where things get interesting. We can fit all kinds of different statistical models. Let's say we want to fit a linear mixed model to the total yield data, to determine if there is a linear trend in the 
+
+We can also fit a repeated measures error structure.
+
+Finally, we can fit GAMs as well.
 
 ### Look at model diagnostics
 
