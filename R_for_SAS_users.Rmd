@@ -276,7 +276,8 @@ fourstates <- filter(se_soybeans, state %in% c('Arkansas', 'Tennessee', 'North C
 ggplot(fourstates, aes(x = year, y = total_yield, color = state)) +
   geom_line(linewidth = 1) +
   theme_bw() +
-  scale_y_log10()
+  scale_y_log10(name = 'total yield (bu)') +
+  theme(legend.position = c(0.8, 0.2))
 ```
 
 Alternatively, we could plot each of the time series on a separate panel. In SAS this requires a separate procedure but in R the existing `ggplot()` statement can be modified.
@@ -295,7 +296,7 @@ ggplot(fourstates, aes(x = year, y = total_yield)) +
   facet_wrap(~ state) +
   geom_line(linewidth = 1) +
   theme_bw() +
-  scale_y_log10()
+  scale_y_log10(name = 'total yield (bu)')
 ```
 
 
@@ -321,7 +322,7 @@ quit;
 ```
 
 ```{r}
-yearly_totals <- se_soybeans %>%
+se_soybeans %>%
   filter(year %% 10 == 0) %>%
   group_by(year) %>%
   summarize(
@@ -329,22 +330,108 @@ yearly_totals <- se_soybeans %>%
     grand_total_yield = sum(total_yield),
     mean_yield = weighted.mean(yield, acres)
   )
-
-yearly_totals
 ```
 
 
 ## Fit statistical models
 
-Here's where things get interesting. We can fit all kinds of different statistical models. Let's say we want to fit a linear mixed model to the total yield data, to determine if there is a linear trend in the 
+Statistical models are the bread and butter of SAS and R. We can fit all kinds of different models in SAS and R: traditional parametric regression models and machine learning models, frequentist and Bayesian models, the list goes on. In this section, I am going to focus on a few flavors of linear regression model because they're most likely the type of model that people taking this lesson commonly work with. We'll compare how to fit them in both SAS and R.
 
-We can also fit a repeated measures error structure.
+You will probably notice that the SAS code can be quite a bit more concise than the R code for fitting these models and examining the results. That's because when you invoke a SAS procedure to fit a statistical model, it usually does a bunch of stuff automatically, like showing some diagnostic statistics, summaries of the effects, and that kind of thing. Usually (but not always) in R, you need to explicitly write the code to produce those diagnostic plots and summaries. This may be annoying at first if you are transitioning from SAS to R. Even so, I believe that it ultimately fosters a deeper understanding of what you are doing (and why) when you are fitting a statistical model.
+
+Let's say we want to fit a linear mixed model to the total yield data, to determine if there is a trend over time in total yield. In SAS we could use `proc reg`.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc reg data = se_soybeans;
+	model total_yield = year;
+run;	
+```
+
+In R, we use the `lm()` function.
+
+```{r}
+yield_fit <- lm(total_yield ~ year, data = se_soybeans)
+```
+
+We use functions on the fitted model object like `summary()` to get a summary of the model fit statistics and parameters, `anova()` to see the F-tests, and `plot()` to see the standard regression diagnostic plots.
+
+```{r}
+summary(yield_fit)
+anova(yield_fit)
+plot(yield_fit)
+```
+
+In both the R and SAS output, the residual diagnostic plots show that the assumptions of normally distributed residuals with homogeneous error variance are severely violated. One way to deal with this is to log-transform the response variable before fitting the model. When we do that, we are looking at multiplicative changes in yield over time, rather than additive. 
+
+In SAS, to the best of my knowledge, you have to pre-transform the response variable before fitting the model, for most statistical procedures.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+data se_soybeans; set se_soybeans;
+	log_total_yield = log(total_yield);
+run;
+
+proc reg data = se_soybeans;
+	model log_total_yield = year;
+run;	
+```
+
+In contrast, in R we can include the log-transformation directly inside the model statement. This is a good practice because some functions that we may use later for post-hoc comparisons and hypothesis tests can detect that a transformation was done and automatically do back-transformations where needed.
+
+```{r}
+logyield_fit <- lm(log(total_yield) ~ year, data = se_soybeans)
+
+summary(logyield_fit)
+anova(logyield_fit)
+plot(logyield_fit)
+```
+
+The residual diagnostic plots show great improvement.
+
+### Mixed models
+
+The models we fit above are not really the most appropriate. That's because linear regression assumes that all data points are independent of one another. Clearly that is not the case for the time series of yield for each state, because yield values from the same state in successive years are not independent of one another. Our dataset has a "multilevel" or "nested" structure. In particular, there are repeated measures across time within each individual state.   
+
+FIXME PUT SOME MORE WORDS IN HERE
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+proc glimmix data = se_soybeans plots = residualpanel;
+	class state;
+	model log_total_yield = year / solution;
+	random intercept / subject = state;
+	random year / type=ar(1) subject = state;
+run;
+```
 
 Finally, we can fit GAMs as well.
 
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+
+```
+
 ### Look at model diagnostics
 
+### A note on Bayesian generalized mixed models
+
+So far, I've presented "classical" or frequentist statistical models. But if you know me, you know I am a big advocate for Bayesian statistical analysis. I am not going to go into it in this lesson, but I wanted to make sure you are aware that state-of-the-art algorithms for fitting Bayesian mixed models are available in both SAS and R. 
+
+If you are a die-hard SAS user and want to fit Bayesian models, I would recommend looking into **proc bglimm**, which stands for **B**ayesian **g**eneralized **li**near **m**ixed **m**odels. In R, I recommend the **brms** package, which stands for **B**ayesian **r**egression **m**odel**s**. Both those packages use the Hamiltonian Monte Carlo algorithm to fit Bayesian mixed models. Check out the [**brms** lesson](https://quentinread.com/SEAStats/#bayesianmixedmodels) on the SEAStats page if you want a quick introduction to that package.
+
 ## Extract predictions from models
+
+It is convenient in SAS that the `lsmeans` statement can be used in many statistical procedures to extract model predictions and test hypotheses. In R, additional functions are needed. The [**emmeans**]() package, developed by Russ Lenth, is a very powerful package that does everything that `lsmeans` does, and then some. Here we will use it to extract predicted means from our statistical model and do statistical tests comparing them. 
+
+We can use `proc plm` in SAS to generate the `lsmeans` output from a model we've fit previously, to compare to the R output we will get from `emmeans()`.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+
+```
+
+```{r}
+
+```
+
+
+
 
 ## Make graphs and tables of model predictions
 

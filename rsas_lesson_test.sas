@@ -75,6 +75,13 @@ proc mixed data = se_soybeans plots = residualpanel;
 	random state;
 run;
 
+proc glimmix data = se_soybeans plots = residualpanel;
+	class state;
+	model log_total_yield = year / solution;
+	random intercept / subject = state;
+	random year / type=ar(1) subject = state;
+run;
+
 /* GAM model */
 
 /* Bayesian mixed model */
