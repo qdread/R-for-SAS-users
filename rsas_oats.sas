@@ -2,14 +2,14 @@
    Eventually snippets of this code will be included in the Rmd using SASmarkdown. 
    This file is for testing code. */
 
-filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv";
-proc import datafile=csvFile out=nass_soybeans replace dbms=csv; guessingrows=2000; run;
+filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/Edwards_oats.csv";
+proc import datafile=csvFile out=oats replace dbms=csv; run;
 
-proc contents data = nass_soybeans; run;
-proc print data = nass_soybeans(obs = 10); run;
+proc contents data = oats; run;
+proc print data = oats(obs = 10); run;
 
-data se_soybeans; set nass_soybeans;
-	where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
+data oats_reduced; set oats;
+	where gen in ('Belle', 'Chaps', 'Brawn', 'Jud', 'Riser', 'Troy');
 run;
 
 data se_soybeans; set se_soybeans;

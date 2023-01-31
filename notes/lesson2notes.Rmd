@@ -1,0 +1,15 @@
+# Notes for lesson 2
+
+## Extract predictions from models
+
+It is convenient in SAS that the `lsmeans` statement can be used in many statistical procedures to extract model predictions and test hypotheses. In R, additional functions are needed. The [**emmeans**]() package, developed by Russ Lenth, is a very powerful package that does everything that `lsmeans` does, and then some. Here we will use it to extract predicted means from our statistical model and do statistical tests comparing them. 
+
+We can use `proc plm` in SAS to generate the `lsmeans` output from a model we've fit previously, to compare to the R output we will get from `emmeans()`.
+
+```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+
+```
+
+```{r}
+
+```
