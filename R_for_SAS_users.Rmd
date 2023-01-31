@@ -275,6 +275,9 @@ This dataset is in a format where each row is a unique observation: measurements
 
 However, the long and skinny format of most "tidy" datasets is not ideal for visualizing the data in a table. We might want to reshape the data into wide format. Let's do this for only the `total_yield` column with the years going down the rows and the states each getting a separate column. 
 
+![](https://raw.githubusercontent.com/gadenbuie/tidyexplain/main/images/tidyr-pivoting.gif)  
+*animation by Garrick Aden-Buie. [See more tidyexplain animations here](https://www.garrickadenbuie.com/project/tidyexplain/).*
+
 #### SAS
 
 We use `proc transpose` specifying `by`, `id`, and `var` and creating a new reshaped dataset.

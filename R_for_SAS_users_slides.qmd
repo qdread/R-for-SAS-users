@@ -176,7 +176,7 @@ glimpse(nass_soybeans)
 
 ---
 
-### Subsetting the data: SAS and R
+### Subsetting the data: SAS
 
 - Create a new dataset or data frame with only the states in the Southeast region
 - In SAS we use the `data` step
@@ -188,6 +188,8 @@ run;
 ```
 
 ---
+
+### Subsetting the data: R
 
 ```{r}
 se_states <- c('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee')
@@ -203,44 +205,46 @@ se_soybeans <- filter(nass_soybeans, state %in% se_states)
 
 ---
 
-### Doing calculations on the data
+### Doing calculations on the data: SAS
 
-Next, let's calculate a new column from existing columns. For example we could multiply acreage by yield (bushels per acre) to get total yield in bushels.
+- Calculate a new column from existing columns
+- Multiply acreage by yield (bushels per acre) to get total yield in bushels
+- SAS uses `data` step
 
-#### SAS
-
-In SAS, this is typically done in the `data` step.
-
-```{sashtml, SASecho = FALSE}
+```
 data se_soybeans; set se_soybeans;
 	total_yield = acres * yield;
 run;
 ```
 
-#### R
+---
 
-In R tidyverse, we use the `mutate()` function. We assign the result back to `se_soybeans`, which "overwrites" the data frame with a new one that has an additional column.
+### Doing calculations on the data: R
 
 ```{r}
 se_soybeans <- mutate(se_soybeans, total_yield = acres * yield)
 ```
 
-### Combining data-wrangling operations
+- R tidyverse: `mutate()`
+- Data frame is first argument, computation is the second argument
+- Assign the result back to the original data frame, overwriting it
 
-We can make the above code more concise in both SAS and R. In SAS, we would combine the row subsetting and the operation to create a new calculated column into the same `data` step. 
+---
 
-#### SAS
+### Combining data-wrangling operations: SAS
 
-```{sashtml, collectcode = TRUE, SASecho = FALSE}
+```
 data se_soybeans; set nass_soybeans;
   where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
 	total_yield = acres * yield;
 run;
 ```
 
-#### R
+- In SAS the row subsetting and new column calculation can be part of the same `data` step
 
-In R, we can put them into one statement by using the "pipe" operator: `%>%`. This operator passes the result on one line to the next line. So here we have two `%>%`. The first `%>%` passes `nass_soybeans` to the `filter()` function, then we subset the rows and pass the result with another `%>%` to the `mutate()` function which creates a new column.
+---
+
+### Combining data-wrangling operations: R
 
 ```{r}
 se_soybeans <- nass_soybeans %>%
@@ -248,29 +252,39 @@ se_soybeans <- nass_soybeans %>%
   mutate(total_yield = acres * yield)
 ```
 
-### Sorting the data
+- Use the "pipe" operator `%>%` to "chain" operations
+- The `%>%` passes the result of one line to the next line
+- Here we first pass `nass_soybeans` unmodified to `filter()`
+- Then pass the result of `filter()` to `mutate()`
 
-Finally, our data is sorted first by state and then by year. Let's say we wanted to sort the rows first by year and then by state. 
+---
 
-#### SAS
+### Sorting the data: SAS
 
-We can sort the data in SAS using `proc sort`. 
-
-```{sashtml, collectcode = TRUE, SASecho = FALSE}
+```
 proc sort data = se_soybeans;
 	by year state;
 run;
 ```
 
-#### R
+- Sort by year and then state using `proc sort`
 
-In R tidyverse, we can use the `arrange()` function from **dplyr**. 
+---
+
+### Sorting the data: R
 
 ```{r}
 se_soybeans <- arrange(se_soybeans, year, state)
 ```
 
-We can even put the `filter()`, `mutate()`, and `arrange()` operations into the same pipe statement.
+- Use `arrange()` in R tidyverse
+- First argument is data frame, following arguments are the column names to sort on
+
+---
+
+### Even longer pipes
+
+- `filter()`, `mutate()`, and `arrange()` in the same pipe statement
 
 ```{r}
 se_soybeans <- nass_soybeans %>%
@@ -279,41 +293,54 @@ se_soybeans <- nass_soybeans %>%
   arrange(year, state)
 ```
 
+---
+
 ### Reshaping the data
 
-This dataset is in a format where each row is a unique observation: measurements of soybean harvested acreage and yield in bushels per acre, identified by a unique combination of year and state. The R tidyverse packages call this format "tidy" data.
+- Each row is a unique observation
+  + Identifier columns are year and state
+  + Data columns are acres and yield
+- This is sometimes called "tidy" data
+- For visualization, we might want to reshape to a wide format instead of long and skinny
 
-However, the long and skinny format of most "tidy" datasets is not ideal for visualizing the data in a table. We might want to reshape the data into wide format. Let's do this for only the `total_yield` column with the years going down the rows and the states each getting a separate column. 
+![](https://raw.githubusercontent.com/gadenbuie/tidyexplain/main/images/tidyr-pivoting.gif)  
+*animation by Garrick Aden-Buie*
 
-#### SAS
+---
 
-We use `proc transpose` specifying `by`, `id`, and `var` and creating a new reshaped dataset.
+### Reshaping the data: SAS
 
-```{sashtml, collectcode = TRUE, SASecho = FALSE}
+```
 proc transpose data = se_soybeans out = total_yield_wide;
 	by year; id state; var total_yield;
 run;
 ```
 
-#### R
+- We get wide form data, row for each year and column for each state
+- `proc transpose` specifying `by`, `id`, and `var`
+- Create a new dataset with the reshaped result
 
-We use `pivot_wider()` from tidyverse, with named arguments.
+---
+
+### Reshaping the data: R
 
 ```{r}
 total_yield_wide <- se_soybeans %>%
   pivot_wider(id_cols = year, names_from = state, values_from = total_yield)
 ```
 
-Notice how the SAS and R statements are really pretty similar, it's just slightly different syntax and different names of the arguments. For example in `proc transpose` the `id` means which column will identify the columns, whereas in `pivot_wider()`, `id_cols` means which column will identify the rows!
+- `pivot_wider()` from tidyverse
+- Pass the column names as arguments
+- `id_cols` is for row IDs, confusingly in SAS `id` is for column IDs
 
-> **PROTIP**: With `proc transpose`, we had to make sure the data was sorted by year and then state to transpose it in this way, so that the `by` groups are in contiguous blocks. R's `pivot_wider()` has no such requirement.
 
+---
 
-We can pivot from a wide to a long format as well. In SAS we'd use `proc transpose` again, versus `pivot_longer()` in R tidyverse.
+### Reshaping wide to long
 
 #### SAS
 
-```{sashtml, SASecho = FALSE}
+```
 proc transpose data = total_yield_wide out = total_yield_long;
 	by year;
 run;
@@ -326,15 +353,14 @@ total_yield_long <- total_yield_wide %>%
   pivot_longer(-year, names_to = 'state', values_to = 'total_yield')
 ```
 
-Notice in both cases we get more rows than we started with because Florida is missing data for some of the years. Those rows with missing data are now explicitly included in the new long-format dataset/data frame. Also note that in SAS you would have to do an additional `data` step to rename the columns to what they were before; in R we can do this more easily inside the `pivot_longer()` statement.
+- We end up with more rows than we started with (missing cells now have rows)
+- R is better at renaming the columns sensibly than SAS is
 
-## Make exploratory graphs
+---
 
-There are a lot of books and online tutorials out there about how to make great data visualizations in R, so here I'll just provide you a couple of examples. Let's say we wanted to plot the time series of yield per acre for four of the states as different colored lines on the same plot. 
+### Make exploratory graphs: SAS
 
-#### SAS
-
-```{sashtml, SASecho = FALSE}
+```
 proc sgplot data = se_soybeans;
 	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
 	series x = year y = yield / group = state; 
@@ -342,7 +368,11 @@ proc sgplot data = se_soybeans;
 run;
 ```
 
-#### R
+- Time series for four states as different lines on the same plot
+
+---
+
+### Make exploratory graphs: R
 
 We use `ggplot()` from the [**ggplot2**](ggplot2.tidyverse.org) package which is loaded when you load **tidyverse**. I will not go through all the code in great detail, check out my **ggplot2** lesson or any of the many online tutorials on **ggplot2**.
 
@@ -356,11 +386,13 @@ ggplot(fourstates, aes(x = year, y = yield, color = state)) +
   theme(legend.position = c(0.2, 0.8))
 ```
 
-Alternatively, we could plot each of the time series on a separate panel. In SAS this requires a different procedure (`proc sgpanel`) but in R the existing `ggplot()` statement can be modified.
+- Check out my **ggplot2** lesson to learn more
 
-#### SAS
+---
 
-```{sashtml, SASecho = FALSE}
+### Make multi-panel version of the plot: SAS
+
+```
 proc sgpanel data=se_soybeans;
 	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
 	panelby state;
@@ -369,7 +401,11 @@ proc sgpanel data=se_soybeans;
 run;
 ```
 
-#### R
+- A separate procedure is needed (`sgpanel`)
+
+---
+
+### Make multi-panel version of the plot: R
 
 ```{r}
 ggplot(fourstates, aes(x = year, y = yield)) +
@@ -379,14 +415,20 @@ ggplot(fourstates, aes(x = year, y = yield)) +
   scale_y_continuous(name = 'yield (bu/ac)')
 ```
 
+- Same code as before except we removed `color = state` and added `facet_wrap(~ state)`
 
 ## Make tables of summary statistics
 
-Let's say we want to know the total acreage harvested per year, the total yield in bushels, and the weighted mean of yield per acre across states (weighted by acreage harvested), for every 10th year.  
+- Many ways to do it in SAS but I like `proc sql`
+- In R we will use a combination of `group_by()` and `summarize()` with pipes
+- Summary statistics to calculate for all states for every 10th year and put into a table:
+  + total acreage harvested
+  + total yield in bushels
+  + weighted mean of yield per acre
 
-#### SAS
+---
 
-In SAS we can use `proc sql` to do this -- there are other ways but that's probably the most concise.
+### Table of summary statistics: SAS
 
 ```{sashtml, SASecho = FALSE}
 proc sql;
@@ -401,7 +443,9 @@ proc sql;
 quit;
 ```
 
-#### R
+---
+
+### Table of summary statistics: R
 
 In R tidyverse, we can calculate those different summary stats with a piped statement: `filter()` to retain only the rows where year is divisible by 10, `group_by()` to identify the column by which we're grouping the data, and `summarize()` which contains a comma-separated list of summary statistics to calculate. 
 
@@ -416,9 +460,15 @@ se_soybeans %>%
   )
 ```
 
+- Piped statement with `filter()`, `group_by()`, and `summarize()`
+- `group_by()` identifies column or columns by which to split the data into groups of rows
+- `summarize()` includes a list of summary statistics separated by commas
+
+---
+
 > **PROTIP**: Notice the similarities between `proc sql` and the R tidyverse code. That's because the tidyverse syntax was partially inspired by SQL.
 
-> **PROTIP 2**: Notice that in SAS, a single equal sign `=` is used to test whether two values are equal, while in R (and in many other languages such as C and Python) you use the double equal sign `==`.
+> **PROTIP 2**: In SAS, a single equal sign `=` is used to test whether two values are equal. In R (and in many other languages such as C and Python) you use the double equal sign `==`.
 
 ## Fit statistical models
 
