@@ -40,14 +40,17 @@ During this workshop, you will ...
 - Fill in R code in the worksheet (replace `...` with code)
 - You can always copy and paste code from text version of lesson if you fall behind
 
-## Background: R and SAS
+## Background: R and SAS {.smaller}
 
 - SAS created in the late 1960s as a "statistical analysis system" for agricultural researchers at North Carolina State University
 - Spun off as an independent business in 1976
-- R first released in 1993, created by statisticians Ross Ihaka and Robert Gentleman, University of Auckland, New Zealand 
 
 ![](https://facilities.ofa.ncsu.edu/files/2020/01/sas-hall2.jpg){width=60%}  
 *SAS Hall at NC State University. There is no R Hall ... yet!*
+
+- R first released in 1993, created by statisticians Ross Ihaka and Robert Gentleman, University of Auckland, New Zealand 
+
+
 
 ## Pros and cons of R
 
@@ -70,7 +73,7 @@ During this workshop, you will ...
 
 ---
 
-![](https://www.mitchelloharawild.com/blog/2018-07-10-hexwall_files/figure-html/final-1.png)  
+![](https://www.mitchelloharawild.com/blog/2018-07-10-hexwall_files/figure-html/final-1.png){width=60%}  
 *Just a few of the R packages out there*
 
 ## Top-down versus crowdsourced
@@ -92,13 +95,6 @@ During this workshop, you will ...
 - R and SAS are both good tools, neither is perfect
 - I still recommend R for stats beginners
 - I'm not trying to convert you from SAS to R, just expose SAS users to a few of R's capabilities
-
-## SAS procedures vs. R packages/functions: an overview table
-
-```{r, echo = FALSE}
-comptable <- read.csv('r_sas_comparison_table.csv')
-knitr::kable(comptable, col.names = c('task', 'SAS', 'R'))
-```
 
 ## Data to doc pipeline {.smaller}
 
@@ -304,6 +300,8 @@ se_soybeans <- nass_soybeans %>%
 - This is sometimes called "tidy" data
 - For visualization, we might want to reshape to a wide format instead of long and skinny
 
+---
+
 ![](https://raw.githubusercontent.com/gadenbuie/tidyexplain/main/images/tidyr-pivoting.gif)  
 *animation by Garrick Aden-Buie*
 
@@ -375,8 +373,6 @@ run;
 
 ### Make exploratory graphs: R
 
-We use `ggplot()` from the [**ggplot2**](ggplot2.tidyverse.org) package which is loaded when you load **tidyverse**. I will not go through all the code in great detail, check out my **ggplot2** lesson or any of the many online tutorials on **ggplot2**.
-
 ```{r}
 fourstates <- filter(se_soybeans, state %in% c('Arkansas', 'Tennessee', 'North Carolina', 'Georgia'))
 
@@ -431,7 +427,7 @@ ggplot(fourstates, aes(x = year, y = yield)) +
 
 ### Table of summary statistics: SAS
 
-```{sashtml, SASecho = FALSE}
+```
 proc sql;
 	select 
 		year,
@@ -447,8 +443,6 @@ quit;
 ---
 
 ### Table of summary statistics: R
-
-In R tidyverse, we can calculate those different summary stats with a piped statement: `filter()` to retain only the rows where year is divisible by 10, `group_by()` to identify the column by which we're grouping the data, and `summarize()` which contains a comma-separated list of summary statistics to calculate. 
 
 ```{r}
 se_soybeans %>%
@@ -528,7 +522,7 @@ check_model(yield_fit)
 ### Mixed models: SAS
 
 
-```{sashtml, SASecho = FALSE}
+```
 proc glimmix data = se_soybeans plots = residualpanel;
 	class state;
 	model yield = year / solution;
@@ -601,9 +595,7 @@ ggplot(mapping = aes(x = year, y = yield, color = state, group = state)) +
 - Linear trend is reasonably good model
 - I have no idea how to make this plot with SAS
 
-# Conclusion
-
-What have you learned so far? 
+# What did you learn today?
 
 - The pros and cons of R and SAS
 - How to create a data frame in R by reading data from an external file
