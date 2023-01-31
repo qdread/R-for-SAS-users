@@ -36,6 +36,7 @@ During this workshop, you will ...
 ## How to follow along with this workshop
 
 - Slides and text version of lessons are online
+  + quentinread.com/SEAStats
 - Fill in R code in the worksheet (replace `...` with code)
 - You can always copy and paste code from text version of lesson if you fall behind
 
@@ -472,33 +473,37 @@ se_soybeans %>%
 
 ## Fit statistical models
 
-Statistical models are the bread and butter of SAS and R. We can fit all kinds of different models in SAS and R: traditional parametric regression models and machine learning models, frequentist and Bayesian models, the list goes on. In this section, I am going to focus on a few flavors of linear regression model because they're most likely the type of model that people taking this lesson commonly work with. We'll compare how to fit them in both SAS and R.
+- Both SAS and R have tons of different options for model fitting
+- SAS code is sometimes more concise (spits out lots of output automagically)
+- R code usually needs to be explicit about what output you want from the model
+  + This has both pros and cons
 
-You will probably notice that the SAS code can be quite a bit more concise than the R code for fitting these models and examining the results. That's because when you invoke a SAS procedure to fit a statistical model, it usually does a bunch of stuff automatically, like showing some diagnostic statistics, summaries of the effects, and that kind of thing. Usually (but not always) in R, you need to explicitly write the code to produce those diagnostic plots and summaries. This may be annoying at first if you are transitioning from SAS to R. Even so, I believe that it ultimately fosters a deeper understanding of what you are doing (and why) when you are fitting a statistical model.
+---
 
-### Simple linear regression
+### Simple linear regression: SAS
 
-Let's say we want to fit a linear model to the yield data, to determine if there is a trend over time in yield per acre. 
-
-#### SAS
-
-In SAS we could use `proc reg`.
-
-```{sashtml, SASecho = FALSE}
+```
 proc reg data = se_soybeans;
 	model yield = year;
 run;	
 ```
 
-#### R
+- Is there a linear trend over time in yield per acre?
+- SAS uses `proc reg` for this
 
-In R, we use the `lm()` function. The model formula takes the form `y ~ x`. We also provide a `data` argument to tell R which data frame the variables are found in.
+---
+
+### Simple linear regression: R
 
 ```{r}
 yield_fit <- lm(yield ~ year, data = se_soybeans)
 ```
 
-We use functions on the fitted model object like `summary()` to get a summary of the model fit statistics and parameters, `anova()` to see the F-tests, and `plot()` to see the standard regression diagnostic plots.
+- Use `lm()`
+- Model formula `y ~ x1 + x2` ...
+- `data` argument says which data frame the variables come from
+
+---
 
 ```{r}
 summary(yield_fit)
@@ -506,15 +511,22 @@ anova(yield_fit)
 check_model(yield_fit)
 ```
 
-In both the R and SAS output, the residual diagnostic plots show that the assumptions of normally distributed residuals with homogeneous error variance are reasonably well met. 
+- `summary()` gives us model fit statistics and parameter estimates
+- `anova()` shows us F-test for the slope
+- `check_model()` gives us nice regression diagnostics (from **easystats**)
+
+---
 
 ### Mixed models
 
-The models we fit above may not be the most appropriate. That's because linear regression assumes that all data points are independent of one another. Clearly that is not the case for the time series of yield for each state, because yield values from the same state in successive years are not independent of one another. Our dataset has a "multilevel" or "nested" structure. In particular, there are repeated measures across time within each individual state.   
+- Simple linear regression assumes all data points are independent
+- But yield values from the same state in different years aren't independent
+- We have "multilevel" or "nested" data (repeated measures)
 
-#### SAS
+---
 
-In SAS, we can use `proc glimmix` with the appropriate `random` statement to fit random intercepts by state, and a random term for year that models the temporal autocorrelation within states.
+### Mixed models: SAS
+
 
 ```{sashtml, SASecho = FALSE}
 proc glimmix data = se_soybeans plots = residualpanel;
@@ -525,9 +537,13 @@ proc glimmix data = se_soybeans plots = residualpanel;
 run;
 ```
 
-#### R
+- `proc glimmix` with appropriate `random` statement
+- Random intercepts and slopes, with AR1 error structure
+- Temporal autocorrelation within states
 
-The equivalent in R uses `lme()` from the **nlme** package.
+---
+
+### Mixed models: R
 
 ```{r}
 yield_fit_lme <- lme(fixed = yield ~ year, 
@@ -536,37 +552,30 @@ yield_fit_lme <- lme(fixed = yield ~ year,
                      data = se_soybeans)
 ```
 
-As you can see, the call to `lme()` includes the same components as the SAS `proc glimmix` statement, but with different syntax. We specify a model formula to the argument called `fixed`, a random effects specification including a random intercept (`1`) and random slope (`year`), grouped by `state`. The `|` separates the terms `1 + year` from the grouping factor `state`. The `corAR1()` function is passed to the `correlation` argument to specify a first-order autoregressive error structure, which is commonly used for repeated measures designs. Finally, both the SAS and R code include a `data` argument to say which dataset or data frame contains the variables to be used for model fitting.
+- Use `lme()`: same components as `proc glimmix` but different syntax
+- `random` component:
+  +  model terms on left-hand side: `1 + year` is intercept and slope
+  + grouping factor on right-hand side of `|`
+- `correlation = corAR1()` argument is similar to `type = ar(1)` in SAS
 
-The regression diagnostics look good.
+---
 
-```{r, message = FALSE}
+```{r}
 check_model(yield_fit_lme)
-```
-
-The summary output for the fitted model object shows us the fixed-effect intercept and slope.
-
-```{r}
 summary(yield_fit_lme)
-```
-
-The `anova()` function shows F-tests for the overall intercept and slope.
-
-```{r}
 anova(yield_fit_lme)
-```
-
-The `coef()` function gives us a table of intercepts and slopes for each of the states (the sum of fixed and random effects).
-
-```{r}
 coef(yield_fit_lme)
 ```
 
-The above shows us that there isn't much difference in trend between states. The model picked up essentially no difference in the intercept and very small differences in the slope. Between 1924 and 2011, a linear trend fit to soybean yield per acre shows an increase of 0.28 bushels per acre per year, with minimal variation across states.
+- Similar to the `lm()` output functions
+- `coef()` gives us a table of intercepts and slopes for each state
+- Shows relatively small difference between states (all ~0.28 more bushels per acre per year)
+
+---
 
 ## Make graph of model predictions
 
-I am not nearly good enough at SAS to make this plot, so I will just show you in R how to generate predictions from the model for the population-level expectation (overall trend across states) and the state-level trends. We will plot the observed and predicted yields on the same plot.
+- Model predictions for individual states and population-level expectation
 
 ```{r}
 yield_pred_bystate <- expand_grid(year = c(1924, 2011), state = se_states) %>%
@@ -575,6 +584,8 @@ yield_pred_bystate <- expand_grid(year = c(1924, 2011), state = se_states) %>%
 yield_pred_overall <- data.frame(state = 'overall', year = c(1924, 2011)) %>% 
   mutate(yield = as.numeric(predict(yield_fit_lme, newdata = ., level = 0)))
 ```
+
+---
 
 ```{r}
 ggplot(mapping = aes(x = year, y = yield, color = state, group = state)) +
@@ -586,7 +597,9 @@ ggplot(mapping = aes(x = year, y = yield, color = state, group = state)) +
           'black line is overall modeled trend')
 ```
 
-The linear trend is a reasonably good model. You can see that there are very small differences in the trend by state. If I were really analyzing these data, I would probably think about fitting a time series model that could account for the different slopes we observe in different decades, as well as the slight increase in variance over time as the yield increases. But this isn't bad for starters.
+- Observed and modeled on the same plot
+- Linear trend is reasonably good model
+- I have no idea how to make this plot with SAS
 
 # Conclusion
 
@@ -600,8 +613,9 @@ What have you learned so far?
 
 Impressive!
 
-This was Lesson 1 in a series. Lesson 2 will cover:
+---
 
-- generalized linear mixed models with different error distributions
-- post hoc comparisons (`lsmeans` statement in SAS, `emmeans()` function in R)
-- generation of reports and documents using RMarkdown
+- See text version of lesson for further reading and useful resources
+- Fill out Google Forms survey
+- Contact me at `quentin.read@usda.gov`!
+

@@ -441,7 +441,7 @@ In R, we use the `lm()` function. The model formula takes the form `y ~ x`. We a
 yield_fit <- lm(yield ~ year, data = se_soybeans)
 ```
 
-We use functions on the fitted model object like `summary()` to get a summary of the model fit statistics and parameters, `anova()` to see the F-tests, and `plot()` to see the standard regression diagnostic plots.
+We use functions on the fitted model object like `summary()` to get a summary of the model fit statistics and parameters, `anova()` to see the F-tests, and `check_model()` from the **performance** package, part of **easystats**, gives us nice regression diagnostic plots.
 
 ```{r}
 summary(yield_fit)
