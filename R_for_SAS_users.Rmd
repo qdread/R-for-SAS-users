@@ -7,19 +7,11 @@ output:
     toc: true
     toc_depth: 3
     toc_float: true
+    df_print: paged
 ---
 
 ```{r sas and rmarkdown setup, include = FALSE}
 library(SASmarkdown)
-saspath <- "C:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe"
-sasopts <- "-nosplash -ls 75"
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(
-  engine.path = 
-    list(sas = saspath, sashtml5 = saspath),
-  engine.opts = 
-    list(sas = sasopts, sashtml5 = sasopts)
-)
 ```
 
 # Introduction
@@ -28,9 +20,9 @@ knitr::opts_chunk$set(
 
 This workshop is intended for SAS users who want to learn R. The people who will get the most out of this course are practicing researchers who have a decent working knowledge of SAS, and of basic statistical analysis (descriptive stats and regression models) as it applies to their field. 
 
-This is lesson 1 in a series of multiple lessons. I will develop more lessons soon!
+This is lesson 1 in a series. I will develop more lessons soon!
 
-[Download the worksheet for this lesson here](https://quentinread.com/SEAStats/brms_crash_course/brms_crash_course_worksheet.R).
+[Download the worksheet for this lesson here](https://quentinread.com/SEAStats/R_for_SAS_users/R_for_SAS_users_worksheet.R).
 
 *A word of warning*: I have much more experience working with R compared to SAS. So if you notice any issues or glaring flaws in the SAS code, chalk that up to my poor SAS skills! The SAS code is provided here mainly for comparison purposes, so that you will be able to better understand what the R code is trying to do by comparing it to a familiar bit of SAS code.
 
@@ -57,7 +49,7 @@ In this workshop, participants will go through a "data to doc" pipeline in R, co
 ## How to follow along with this workshop
 
 - Slides and text version of lessons are online
-- Fill in code in the worksheet (replace `...` with code)
+- Fill in R code in the worksheet (replace `...` with code)
 - You can always copy and paste code from text version of lesson if you fall behind
 - Notes on best practices will be marked with **PROTIP** as we go along!
 
@@ -82,9 +74,9 @@ All of that said, the point of this workshop is not to convert people from SAS t
 In many cases, a package in R is roughly equivalent to a procedure or `proc` in SAS. Here's a quick reference table I came up with that shows which SAS procedure corresponds to which package or function in R. There are a diversity of R packages and functions for each of these tasks but I am showing you my "favorite" or recommended alternatives in bold.
 
 ```{r, echo = FALSE}
-# FIXME insert table here
+comptable <- read.csv('r_sas_comparison_table.csv')
+knitr::kable(comptable, col.names = c('task', 'SAS', 'R'))
 ```
-
 
 Okay, that's enough lecturing. Let's actually do some coding.
 
@@ -107,13 +99,13 @@ We will use example datasets for this lesson from the R package [**agridat**](ht
 
 ## Load R packages
 
-Here we'll load the R packages we are going to work with today. This includes the [**tidyverse**]() package for reading, manipulating, and plotting data, the **nlme** package for fitting linear mixed models, and the **easystats** package which has some good model diagnostic plots.
+Here we'll load the R packages we are going to work with today. This includes the [**tidyverse**](tidyverse.org) package for reading, manipulating, and plotting data, the [**nlme**](https://cran.r-project.org/package=nlme) package for fitting linear mixed models, and the [**easystats**](easystats.github.io) package which has some good model diagnostic plots.
 
 The "tidyverse" is actually a set of related packages used for common data science tasks. It is pretty easy for beginners to learn so I usually teach introductory R lessons using it. But it's not the only way to do that kind of thing. In fact, all of the data wrangling part of this lesson could be done with base R functions that don't require a package. 
 
 > **PROTIP**: It's good practice to load all necessary packages for a script at the beginning. Among other benefits, this ensures that if anyone who's running the script needs to install one or more packages to run your script, they can do that all at once instead of having to interrupt the workflow later to install packages.
 
-```{r}
+```{r, message = FALSE}
 library(tidyverse)
 library(nlme)
 library(easystats)
@@ -130,10 +122,13 @@ The example data for this lesson are hosted on GitHub. We are importing the data
 
 Some people like to import data in the `data` step in SAS, or use `datalines;`, but I recommend using `proc import`.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
-ods html5 style = htmlblue;
+```
 filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv";
-proc import datafile=csvFile out=nass_soybeans replace dbms=csv; guessingrows=2000; run;
+proc import datafile = csvFile out = nass_soybeans replace dbms = csv; guessingrows = 2000; run;
+```
+
+```{sashtml, echo = FALSE, SASecho = FALSE, collectcode = TRUE}
+proc import datafile="C:\Users\qdread\Documents\GitHub\ARS\training\R-for-SAS-users\data\NASS_soybean.csv" out=nass_soybeans replace dbms=csv; guessingrows=2000; run;
 ```
 
 #### R
@@ -155,8 +150,10 @@ Here we will print the first 10 rows of the data in both SAS and R, and show som
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc print data = nass_soybeans(obs = 10); run;
+
+ods select variables;
 proc contents data = nass_soybeans; run;
 ```
 
@@ -170,11 +167,11 @@ glimpse(nass_soybeans)
 
 ### Subsetting the data
 
-Let's say we wanted to work with only the data from the states in the Southeast region. In SAS we usually use the `data` step to create subsets of the data, whereas in R tidyverse, we use the `filter()` function from the **dplyr** package. 
+Let's say we wanted to work with only the data from the states in the Southeast region. In SAS we usually use the `data` step to create subsets of the data, whereas in R tidyverse, we use the `filter()` function from the [**dplyr**](dplyr.tidyverse.org) package. 
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
 data se_soybeans; set nass_soybeans;
 	where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
 run;
@@ -198,7 +195,7 @@ Next, let's calculate a new column from existing columns. For example we could m
 
 In SAS, this is typically done in the `data` step.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 data se_soybeans; set se_soybeans;
 	total_yield = acres * yield;
 run;
@@ -218,7 +215,7 @@ We can make the above code more concise in both SAS and R. In SAS, we would comb
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
 data se_soybeans; set nass_soybeans;
   where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
 	total_yield = acres * yield;
@@ -243,7 +240,7 @@ Finally, our data is sorted first by state and then by year. Let's say we wanted
 
 We can sort the data in SAS using `proc sort`. 
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
 proc sort data = se_soybeans;
 	by year state;
 run;
@@ -276,7 +273,7 @@ However, the long and skinny format of most "tidy" datasets is not ideal for vis
 
 We use `proc transpose` specifying `by`, `id`, and `var` and creating a new reshaped dataset.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
 proc transpose data = se_soybeans out = total_yield_wide;
 	by year; id state; var total_yield;
 run;
@@ -300,7 +297,7 @@ We can pivot from a wide to a long format as well. In SAS we'd use `proc transpo
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc transpose data = total_yield_wide out = total_yield_long;
 	by year;
 run;
@@ -321,17 +318,17 @@ There are a lot of books and online tutorials out there about how to make great 
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
-proc sgplot data=se_soybeans;
+```{sashtml, SASecho = FALSE}
+proc sgplot data = se_soybeans;
 	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
-	series x=year y=yield / group=state; 
+	series x = year y = yield / group = state; 
 	yaxis label='yield (bu/ac)';
 run;
 ```
 
 #### R
 
-We use `ggplot()` from the **ggplot2** package which is loaded when you load **tidyverse**. I will not go through all the code in great detail, check out my **ggplot2** lesson or any of the many online tutorials on **ggplot2**.
+We use `ggplot()` from the [**ggplot2**](ggplot2.tidyverse.org) package which is loaded when you load **tidyverse**. I will not go through all the code in great detail, check out my **ggplot2** lesson or any of the many online tutorials on **ggplot2**.
 
 ```{r}
 fourstates <- filter(se_soybeans, state %in% c('Arkansas', 'Tennessee', 'North Carolina', 'Georgia'))
@@ -347,12 +344,12 @@ Alternatively, we could plot each of the time series on a separate panel. In SAS
 
 #### SAS
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc sgpanel data=se_soybeans;
 	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
 	panelby state;
-	series x=year y=yield;
-	rowaxis label='yield (bu/ac)';
+	series x = year y = yield;
+	rowaxis label = 'yield (bu/ac)';
 run;
 ```
 
@@ -375,7 +372,7 @@ Let's say we want to know the total acreage harvested per year, the total yield 
 
 In SAS we can use `proc sql` to do this -- there are other ways but that's probably the most concise.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc sql;
 	select 
 		year,
@@ -421,7 +418,7 @@ Let's say we want to fit a linear model to the yield data, to determine if there
 
 In SAS we could use `proc reg`.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc reg data = se_soybeans;
 	model yield = year;
 run;	
@@ -429,7 +426,7 @@ run;
 
 #### R
 
-In R, we use the `lm()` function.
+In R, we use the `lm()` function. The model formula takes the form `y ~ x`. We also provide a `data` argument to tell R which data frame the variables are found in.
 
 ```{r}
 yield_fit <- lm(yield ~ year, data = se_soybeans)
@@ -453,12 +450,12 @@ The models we fit above may not be the most appropriate. That's because linear r
 
 In SAS, we can use `proc glimmix` with the appropriate `random` statement to fit random intercepts by state, and a random term for year that models the temporal autocorrelation within states.
 
-```{sashtml5, collectcode = TRUE, SASecho = FALSE}
+```{sashtml, SASecho = FALSE}
 proc glimmix data = se_soybeans plots = residualpanel;
 	class state;
 	model yield = year / solution;
 	random intercept / subject = state;
-	random year / type=ar(1) subject = state;
+	random year / type = ar(1) subject = state;
 run;
 ```
 
@@ -477,7 +474,7 @@ As you can see, the call to `lme()` includes the same components as the SAS `pro
 
 The regression diagnostics look good.
 
-```{r}
+```{r, message = FALSE}
 check_model(yield_fit_lme)
 ```
 
@@ -525,13 +522,7 @@ ggplot(mapping = aes(x = year, y = yield, color = state, group = state)) +
 
 The linear trend is a reasonably good model. You can see that there are very small differences in the trend by state. If I were really analyzing these data, I would probably think about fitting a time series model that could account for the different slopes we observe in different decades, as well as the slight increase in variance over time as the yield increases. But this isn't bad for starters.
 
-### A note on Bayesian generalized mixed models
-
-So far, I've presented "classical" or frequentist statistical models. But if you know me, you probably know I am a big advocate for Bayesian statistical analysis. I am not going to go into it in this lesson, but I wanted to make sure you are aware that state-of-the-art algorithms for fitting Bayesian mixed models are available in both SAS and R. 
-
-If you are a die-hard SAS user and want to fit Bayesian models, I would recommend looking into **proc bglimm**, which stands for **B**ayesian **g**eneralized **li**near **m**ixed **m**odels. In R, I recommend the **brms** package, which stands for **B**ayesian **r**egression **m**odel**s**. Both those packages use the Hamiltonian Monte Carlo algorithm to fit Bayesian mixed models. Check out the [**brms** lesson](https://quentinread.com/SEAStats/#bayesianmixedmodels) on the SEAStats page if you want a quick introduction to that package.
-
-## Conclusion
+# Conclusion
 
 What have you learned so far? 
 

@@ -1,9 +1,9 @@
 ﻿Task,SAS procedure,R packages and functions
-import data,"proc import, data step","read.csv (base R), read_csv (readr in tidyverse), read_xlsx (readxl)"
-"clean, manipulate, and sort data","proc transpose, data step","dplyr, tidyr"
-make graphs,proc sgplot,"plot (base R), ggplot2"
-calculate summary statistics,"proc means, proc freq","table (base R), group_by and summarize (dplyr)"
-fit statistical models (frequentist),"proc reg, proc glm, proc mixed, proc glimmix","lm, glm (base R), lme4, nlme, etc."
-fit statistical models (Bayesian),proc bglimm,brms
-look at model diagnostics,diagnostics produced within model fitting procedures,"some diagnostics produced by model fitting packages, also see performance package (easystats)"
-extract predictions from models,"lsmeans statement, also see proc plm","emmeans, marginaleffects"
+import data,"`proc import`, `data` step","`read.csv` (base R), `read_csv` (**readr** package in tidyverse), `read_xlsx` (**readxl** package)"
+"clean, manipulate, and sort data","`proc transpose`, `data` step",**dplyr** and **tidyr** packages in tidyverse
+make graphs,"`proc sgplot`, etc.","`plot` (base R), `ggplot` (**ggplot2** package in tidyverse)"
+calculate summary statistics,"`proc means`, `proc freq`","`table` (base R), `group_by` and `summarize` (**dplyr**)"
+fit statistical models (frequentist),"`proc reg`, `proc glm`, `proc mixed`, `proc glimmix`, etc.","`lm`, `glm` (base R), **lme4** package, **nlme** package, etc."
+fit statistical models (Bayesian),`proc bglimm`,**brms**
+look at model diagnostics,diagnostics produced within model fitting procedures,"some diagnostics produced by model fitting packages, also see **easystats** package"
+extract predictions from models,"`lsmeans` statement, also see `proc plm`","**emmeans**, **marginaleffects**"

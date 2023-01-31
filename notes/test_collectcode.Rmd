@@ -1,0 +1,54 @@
+---
+title: "Test"
+author: "Quentin D. Read"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Let's see if this works.
+
+```{r setup, include = FALSE}
+library(SASmarkdown)
+```
+
+
+```{sashtml5, collectcode = TRUE}
+data power_example_1;
+  input trt mu;
+  do obs = 1 to 5;
+    output;
+  end;
+datalines;
+0 20
+1 25
+2 25
+;
+```
+
+```{sashtml5, collectcode = TRUE}
+proc glimmix data = power_example_1;
+  class trt;
+  model mu = trt;
+  parms (9) / hold = 1;
+  contrast 'control vs experimental' trt 2 -1 -1;
+  contrast 'control vs experimental 1' trt 1 -1;
+  contrast 'control vs experimental 2' trt 1 0 -1;
+  contrast 'experimental 1 vs experimental 2' trt 0 1 -1;
+  lsmeans trt / diff cl;
+  ods output tests3 = F_overall contrasts = F_contrasts;
+run;
+```
+
+```{sashtml5}
+data power;
+  set F_overall F_contrasts;
+  nc_parm = numdf * Fvalue;
+  alpha = 0.05;
+  F_crit = Finv(1 - alpha, numdf, dendf, 0);
+  Power = 1 - probF(F_crit, numdf, dendf, nc_parm);
+run;
+
+proc print data = power;
+run;
+```
+

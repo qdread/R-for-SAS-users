@@ -12,3 +12,7 @@
 
 # directory generated when rendering QMD
 *_files/
+
+# SAS output
+unnamed*.png
+sas*.htm
