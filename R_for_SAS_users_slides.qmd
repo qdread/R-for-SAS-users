@@ -8,15 +8,550 @@ execute:
   eval: false
 ---
 
-```{r sas and rmarkdown setup, echo = FALSE}
-library(SASmarkdown)
-saspath <- "C:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe"
-sasopts <- "-nosplash -ls 75"
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(
-  engine.path = 
-    list(sas = saspath, sashtml5 = saspath),
-  engine.opts = 
-    list(sas = sasopts, sashtml5 = sasopts)
-)
+## What is this workshop?
+
+- For SAS users who want to learn R
+- Practicing researchers who have a decent working knowledge of SAS and of basic statistical analysis
+- SAS code is provided for comparison purposes
+- Lesson 1 in a series, more soon!
+
+## Conceptual learning objectives
+
+During this workshop, you will ...
+
+- Learn the similarities and differences between SAS and R, both different tools for the job
+- Get introduced to what R packages are, in particular the "tidyverse"
+- Learn which common SAS statistical procedures correspond to which R packages/functions
+
+## Practical skills
+
+"Data to doc" pipeline, including ...
+
+- Import the data from a CSV file
+- Clean and reshape the data
+- Calculate some summary statistics and make some exploratory plots
+- Fit a linear model and a linear mixed-effects model
+- Make plots and tables of results
+
+## How to follow along with this workshop
+
+- Slides and text version of lessons are online
+- Fill in R code in the worksheet (replace `...` with code)
+- You can always copy and paste code from text version of lesson if you fall behind
+
+## Background: R and SAS
+
+- SAS created in the late 1960s as a "statistical analysis system" for agricultural researchers at North Carolina State University
+- Spun off as an independent business in 1976
+- R first released in 1993, created by statisticians Ross Ihaka and Robert Gentleman, University of Auckland, New Zealand 
+
+![](https://facilities.ofa.ncsu.edu/files/2020/01/sas-hall2.jpg){width=60%}  
+*SAS Hall at NC State University. There is no R Hall ... yet!*
+
+## Pros and cons of R
+
+- R is free and open-source
+- Anyone can contribute a package (set of functions serving a common purpose)
+- Lots of different capabilities
+  + GIS and geospatial analysis
+  + High-performance computing
+  + Machine learning
+
+---
+
+- Lots of different user communities
+  + Social sciences
+  + Ecology
+  + Economics
+  + Pharmacology
+  + Linguistics
+  + and more ...
+
+---
+
+![](https://www.mitchelloharawild.com/blog/2018-07-10-hexwall_files/figure-html/final-1.png)  
+*Just a few of the R packages out there*
+
+## Top-down versus crowdsourced
+
+- SAS is more top-down and centralized than R
+- Usually in SAS, one kind of statistical model = one procedure
+- R may have dozens of ways to fit a particular stat model
+- This is both good and bad
+
+## Transition from SAS to R
+
+- SAS may be winding down support for its desktop products, moving to cloud-based services
+- This is good for big corporations but not great for government and academic researchers
+- R is more reliable for the future
+- Python is another option
+
+## Tools for a job
+
+- R and SAS are both good tools, neither is perfect
+- I still recommend R for stats beginners
+- I'm not trying to convert you from SAS to R, just expose SAS users to a few of R's capabilities
+
+## SAS procedures vs. R packages/functions: an overview table
+
+```{r, echo = FALSE}
+comptable <- read.csv('r_sas_comparison_table.csv')
+knitr::kable(comptable, col.names = c('task', 'SAS', 'R'))
 ```
+
+## Data to doc pipeline {.smaller}
+
+- Import the data from a file
+- Clean, manipulate, and sort the data
+- Make exploratory graphs and tables
+- Fit statistical models
+- Look at model diagnostics to make sure our models are valid
+- Extract predictions from the statistical models
+- Make graphs and tables of model predictions
+- Put results into a document
+
+## Load R packages
+
+- **tidyverse** for reading, manipulating, and plotting data
+- **nlme** for fitting linear mixed models
+- **easystats** for making model diagnostic plots
+  + (**tidyverse** and **easystats** are actually collections of several packages)
+
+```{r, message = FALSE}
+library(tidyverse)
+library(nlme)
+library(easystats)
+```
+
+## Import the data from a file
+
+- The example data for this lesson are hosted on GitHub
+- We are importing the data directly from a URL (usually you read data you have saved locally)
+
+> **PROTIP**: Use CSV not XLSX!
+
+---
+
+### Import the data: SAS
+
+I recommend using `proc import` but some use the `data` step
+
+```
+filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv";
+proc import datafile = csvFile out = nass_soybeans replace dbms = csv; guessingrows = 2000; run;
+```
+
+---
+
+### Import the data: R
+
+```{r}
+nass_soybeans <- read_csv('https://github.com/qdread/R-for-SAS-users/raw/main/data/NASS_soybean.csv')
+```
+
+- Use `read_csv()` function
+- variable is created using the syntax `variable <- value`: "variable gets value"
+- functions are called using the syntax `function(argument)`
+
+---
+
+### Examining the data: SAS and R
+
+#### SAS
+
+```
+proc print data = nass_soybeans(obs = 10); run;
+
+ods select variables;
+proc contents data = nass_soybeans; run;
+```
+
+#### R
+
+```{r}
+head(nass_soybeans, 10)
+summary(nass_soybeans)
+glimpse(nass_soybeans)
+```
+
+---
+
+### Subsetting the data: SAS and R
+
+- Create a new dataset or data frame with only the states in the Southeast region
+- In SAS we use the `data` step
+
+```
+data se_soybeans; set nass_soybeans;
+	where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
+run;
+```
+
+---
+
+```{r}
+se_states <- c('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee')
+
+se_soybeans <- filter(nass_soybeans, state %in% se_states)
+```
+
+- In R tidyverse, we use `filter()`
+- Create character vector of state names separately
+- `filter()` function has data frame as first argument, condition as second argument
+- Keep only rows that match the condition
+- Assign the result to a new data frame
+
+---
+
+### Doing calculations on the data
+
+Next, let's calculate a new column from existing columns. For example we could multiply acreage by yield (bushels per acre) to get total yield in bushels.
+
+#### SAS
+
+In SAS, this is typically done in the `data` step.
+
+```{sashtml, SASecho = FALSE}
+data se_soybeans; set se_soybeans;
+	total_yield = acres * yield;
+run;
+```
+
+#### R
+
+In R tidyverse, we use the `mutate()` function. We assign the result back to `se_soybeans`, which "overwrites" the data frame with a new one that has an additional column.
+
+```{r}
+se_soybeans <- mutate(se_soybeans, total_yield = acres * yield)
+```
+
+### Combining data-wrangling operations
+
+We can make the above code more concise in both SAS and R. In SAS, we would combine the row subsetting and the operation to create a new calculated column into the same `data` step. 
+
+#### SAS
+
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
+data se_soybeans; set nass_soybeans;
+  where state in ('Alabama', 'Arkansas', 'Florida', 'Georgia', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee');
+	total_yield = acres * yield;
+run;
+```
+
+#### R
+
+In R, we can put them into one statement by using the "pipe" operator: `%>%`. This operator passes the result on one line to the next line. So here we have two `%>%`. The first `%>%` passes `nass_soybeans` to the `filter()` function, then we subset the rows and pass the result with another `%>%` to the `mutate()` function which creates a new column.
+
+```{r}
+se_soybeans <- nass_soybeans %>%
+  filter(state %in% se_states) %>%
+  mutate(total_yield = acres * yield)
+```
+
+### Sorting the data
+
+Finally, our data is sorted first by state and then by year. Let's say we wanted to sort the rows first by year and then by state. 
+
+#### SAS
+
+We can sort the data in SAS using `proc sort`. 
+
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
+proc sort data = se_soybeans;
+	by year state;
+run;
+```
+
+#### R
+
+In R tidyverse, we can use the `arrange()` function from **dplyr**. 
+
+```{r}
+se_soybeans <- arrange(se_soybeans, year, state)
+```
+
+We can even put the `filter()`, `mutate()`, and `arrange()` operations into the same pipe statement.
+
+```{r}
+se_soybeans <- nass_soybeans %>%
+  filter(state %in% se_states) %>%
+  mutate(total_yield = acres * yield) %>%
+  arrange(year, state)
+```
+
+### Reshaping the data
+
+This dataset is in a format where each row is a unique observation: measurements of soybean harvested acreage and yield in bushels per acre, identified by a unique combination of year and state. The R tidyverse packages call this format "tidy" data.
+
+However, the long and skinny format of most "tidy" datasets is not ideal for visualizing the data in a table. We might want to reshape the data into wide format. Let's do this for only the `total_yield` column with the years going down the rows and the states each getting a separate column. 
+
+#### SAS
+
+We use `proc transpose` specifying `by`, `id`, and `var` and creating a new reshaped dataset.
+
+```{sashtml, collectcode = TRUE, SASecho = FALSE}
+proc transpose data = se_soybeans out = total_yield_wide;
+	by year; id state; var total_yield;
+run;
+```
+
+#### R
+
+We use `pivot_wider()` from tidyverse, with named arguments.
+
+```{r}
+total_yield_wide <- se_soybeans %>%
+  pivot_wider(id_cols = year, names_from = state, values_from = total_yield)
+```
+
+Notice how the SAS and R statements are really pretty similar, it's just slightly different syntax and different names of the arguments. For example in `proc transpose` the `id` means which column will identify the columns, whereas in `pivot_wider()`, `id_cols` means which column will identify the rows!
+
+> **PROTIP**: With `proc transpose`, we had to make sure the data was sorted by year and then state to transpose it in this way, so that the `by` groups are in contiguous blocks. R's `pivot_wider()` has no such requirement.
+
+
+We can pivot from a wide to a long format as well. In SAS we'd use `proc transpose` again, versus `pivot_longer()` in R tidyverse.
+
+#### SAS
+
+```{sashtml, SASecho = FALSE}
+proc transpose data = total_yield_wide out = total_yield_long;
+	by year;
+run;
+```
+
+#### R
+
+```{r}
+total_yield_long <- total_yield_wide %>%
+  pivot_longer(-year, names_to = 'state', values_to = 'total_yield')
+```
+
+Notice in both cases we get more rows than we started with because Florida is missing data for some of the years. Those rows with missing data are now explicitly included in the new long-format dataset/data frame. Also note that in SAS you would have to do an additional `data` step to rename the columns to what they were before; in R we can do this more easily inside the `pivot_longer()` statement.
+
+## Make exploratory graphs
+
+There are a lot of books and online tutorials out there about how to make great data visualizations in R, so here I'll just provide you a couple of examples. Let's say we wanted to plot the time series of yield per acre for four of the states as different colored lines on the same plot. 
+
+#### SAS
+
+```{sashtml, SASecho = FALSE}
+proc sgplot data = se_soybeans;
+	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
+	series x = year y = yield / group = state; 
+	yaxis label='yield (bu/ac)';
+run;
+```
+
+#### R
+
+We use `ggplot()` from the [**ggplot2**](ggplot2.tidyverse.org) package which is loaded when you load **tidyverse**. I will not go through all the code in great detail, check out my **ggplot2** lesson or any of the many online tutorials on **ggplot2**.
+
+```{r}
+fourstates <- filter(se_soybeans, state %in% c('Arkansas', 'Tennessee', 'North Carolina', 'Georgia'))
+
+ggplot(fourstates, aes(x = year, y = yield, color = state)) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  scale_y_continuous(name = 'yield (bu/ac)') +
+  theme(legend.position = c(0.2, 0.8))
+```
+
+Alternatively, we could plot each of the time series on a separate panel. In SAS this requires a different procedure (`proc sgpanel`) but in R the existing `ggplot()` statement can be modified.
+
+#### SAS
+
+```{sashtml, SASecho = FALSE}
+proc sgpanel data=se_soybeans;
+	where state in ('Arkansas', 'Tennessee', 'North Carolina', 'Georgia');
+	panelby state;
+	series x = year y = yield;
+	rowaxis label = 'yield (bu/ac)';
+run;
+```
+
+#### R
+
+```{r}
+ggplot(fourstates, aes(x = year, y = yield)) +
+  facet_wrap(~ state) +
+  geom_line(linewidth = 1) +
+  theme_bw() +
+  scale_y_continuous(name = 'yield (bu/ac)')
+```
+
+
+## Make tables of summary statistics
+
+Let's say we want to know the total acreage harvested per year, the total yield in bushels, and the weighted mean of yield per acre across states (weighted by acreage harvested), for every 10th year.  
+
+#### SAS
+
+In SAS we can use `proc sql` to do this -- there are other ways but that's probably the most concise.
+
+```{sashtml, SASecho = FALSE}
+proc sql;
+	select 
+		year,
+		sum(acres) as grand_total_acres,
+		sum(total_yield) as grand_total_yield,
+		sum(yield * acres) / sum(acres) as mean_yield
+	from se_soybeans
+	where mod(year, 10) = 0
+	group by year;
+quit;
+```
+
+#### R
+
+In R tidyverse, we can calculate those different summary stats with a piped statement: `filter()` to retain only the rows where year is divisible by 10, `group_by()` to identify the column by which we're grouping the data, and `summarize()` which contains a comma-separated list of summary statistics to calculate. 
+
+```{r}
+se_soybeans %>%
+  filter(year %% 10 == 0) %>%
+  group_by(year) %>%
+  summarize(
+    grand_total_acres = sum(acres),
+    grand_total_yield = sum(total_yield),
+    mean_yield = weighted.mean(yield, acres)
+  )
+```
+
+> **PROTIP**: Notice the similarities between `proc sql` and the R tidyverse code. That's because the tidyverse syntax was partially inspired by SQL.
+
+> **PROTIP 2**: Notice that in SAS, a single equal sign `=` is used to test whether two values are equal, while in R (and in many other languages such as C and Python) you use the double equal sign `==`.
+
+## Fit statistical models
+
+Statistical models are the bread and butter of SAS and R. We can fit all kinds of different models in SAS and R: traditional parametric regression models and machine learning models, frequentist and Bayesian models, the list goes on. In this section, I am going to focus on a few flavors of linear regression model because they're most likely the type of model that people taking this lesson commonly work with. We'll compare how to fit them in both SAS and R.
+
+You will probably notice that the SAS code can be quite a bit more concise than the R code for fitting these models and examining the results. That's because when you invoke a SAS procedure to fit a statistical model, it usually does a bunch of stuff automatically, like showing some diagnostic statistics, summaries of the effects, and that kind of thing. Usually (but not always) in R, you need to explicitly write the code to produce those diagnostic plots and summaries. This may be annoying at first if you are transitioning from SAS to R. Even so, I believe that it ultimately fosters a deeper understanding of what you are doing (and why) when you are fitting a statistical model.
+
+### Simple linear regression
+
+Let's say we want to fit a linear model to the yield data, to determine if there is a trend over time in yield per acre. 
+
+#### SAS
+
+In SAS we could use `proc reg`.
+
+```{sashtml, SASecho = FALSE}
+proc reg data = se_soybeans;
+	model yield = year;
+run;	
+```
+
+#### R
+
+In R, we use the `lm()` function. The model formula takes the form `y ~ x`. We also provide a `data` argument to tell R which data frame the variables are found in.
+
+```{r}
+yield_fit <- lm(yield ~ year, data = se_soybeans)
+```
+
+We use functions on the fitted model object like `summary()` to get a summary of the model fit statistics and parameters, `anova()` to see the F-tests, and `plot()` to see the standard regression diagnostic plots.
+
+```{r}
+summary(yield_fit)
+anova(yield_fit)
+check_model(yield_fit)
+```
+
+In both the R and SAS output, the residual diagnostic plots show that the assumptions of normally distributed residuals with homogeneous error variance are reasonably well met. 
+
+### Mixed models
+
+The models we fit above may not be the most appropriate. That's because linear regression assumes that all data points are independent of one another. Clearly that is not the case for the time series of yield for each state, because yield values from the same state in successive years are not independent of one another. Our dataset has a "multilevel" or "nested" structure. In particular, there are repeated measures across time within each individual state.   
+
+#### SAS
+
+In SAS, we can use `proc glimmix` with the appropriate `random` statement to fit random intercepts by state, and a random term for year that models the temporal autocorrelation within states.
+
+```{sashtml, SASecho = FALSE}
+proc glimmix data = se_soybeans plots = residualpanel;
+	class state;
+	model yield = year / solution;
+	random intercept / subject = state;
+	random year / type = ar(1) subject = state;
+run;
+```
+
+#### R
+
+The equivalent in R uses `lme()` from the **nlme** package.
+
+```{r}
+yield_fit_lme <- lme(fixed = yield ~ year, 
+                     random = ~ 1 + year | state, 
+                     correlation = corAR1(), 
+                     data = se_soybeans)
+```
+
+As you can see, the call to `lme()` includes the same components as the SAS `proc glimmix` statement, but with different syntax. We specify a model formula to the argument called `fixed`, a random effects specification including a random intercept (`1`) and random slope (`year`), grouped by `state`. The `|` separates the terms `1 + year` from the grouping factor `state`. The `corAR1()` function is passed to the `correlation` argument to specify a first-order autoregressive error structure, which is commonly used for repeated measures designs. Finally, both the SAS and R code include a `data` argument to say which dataset or data frame contains the variables to be used for model fitting.
+
+The regression diagnostics look good.
+
+```{r, message = FALSE}
+check_model(yield_fit_lme)
+```
+
+The summary output for the fitted model object shows us the fixed-effect intercept and slope.
+
+```{r}
+summary(yield_fit_lme)
+```
+
+The `anova()` function shows F-tests for the overall intercept and slope.
+
+```{r}
+anova(yield_fit_lme)
+```
+
+The `coef()` function gives us a table of intercepts and slopes for each of the states (the sum of fixed and random effects).
+
+```{r}
+coef(yield_fit_lme)
+```
+
+The above shows us that there isn't much difference in trend between states. The model picked up essentially no difference in the intercept and very small differences in the slope. Between 1924 and 2011, a linear trend fit to soybean yield per acre shows an increase of 0.28 bushels per acre per year, with minimal variation across states.
+
+## Make graph of model predictions
+
+I am not nearly good enough at SAS to make this plot, so I will just show you in R how to generate predictions from the model for the population-level expectation (overall trend across states) and the state-level trends. We will plot the observed and predicted yields on the same plot.
+
+```{r}
+yield_pred_bystate <- expand_grid(year = c(1924, 2011), state = se_states) %>%
+  mutate(yield = as.numeric(predict(yield_fit_lme, newdata = .)))
+
+yield_pred_overall <- data.frame(state = 'overall', year = c(1924, 2011)) %>% 
+  mutate(yield = as.numeric(predict(yield_fit_lme, newdata = ., level = 0)))
+```
+
+```{r}
+ggplot(mapping = aes(x = year, y = yield, color = state, group = state)) +
+  geom_line(data = se_soybeans, alpha = 0.3) +
+  geom_line(data = yield_pred_bystate, linewidth = 0.7) +
+  geom_line(data = yield_pred_overall, color = 'black', linewidth = 1.2) +
+  theme_bw() +
+  ggtitle('soybean yields by state, observations and modeled trends, 1924-2011',
+          'black line is overall modeled trend')
+```
+
+The linear trend is a reasonably good model. You can see that there are very small differences in the trend by state. If I were really analyzing these data, I would probably think about fitting a time series model that could account for the different slopes we observe in different decades, as well as the slight increase in variance over time as the yield increases. But this isn't bad for starters.
+
+# Conclusion
+
+What have you learned so far? 
+
+- The pros and cons of R and SAS
+- How to create a data frame in R by reading data from an external file
+- How to clean, manipulate, sort, and reshape your data frame
+- How to calculate summary statistics from a data frame
+- How to fit a linear model and a linear mixed model
+
+Impressive!
+
+This was Lesson 1 in a series. Lesson 2 will cover:
+
+- generalized linear mixed models with different error distributions
+- post hoc comparisons (`lsmeans` statement in SAS, `emmeans()` function in R)
+- generation of reports and documents using RMarkdown

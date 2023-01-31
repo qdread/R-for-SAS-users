@@ -59,9 +59,15 @@ In this workshop, participants will go through a "data to doc" pipeline in R, co
 
 Before we get into the code, let's talk a little bit about R and SAS. SAS has been around quite a bit longer than R. It was developed in the late 1960s as a "statistical analysis system" for agricultural researchers at North Carolina State University, and got spun off as an independent business in 1976. In contrast, R was first released in 1993, when it was created by statisticians Ross Ihaka and Robert Gentleman at the University of Auckland in New Zealand. All that is to say that SAS has been in use longer, especially in agricultural research in government and academia in the United States. So, many ARS long-timers cut their teeth on SAS.
 
+![](https://facilities.ofa.ncsu.edu/files/2020/01/sas-hall2.jpg){width=60%}  
+*SAS Hall at NC State University. There is no R Hall ... yet!*
+
 While SAS is a powerful and useful tool, R has a lot of comparative advantages. For one thing, it is free and open-source. This is a huge advantage because any user can contribute a "package" to R's online repository. A package is a collection of functions that go together and are used for a common purpose. For example, there are packages for making graphics, fitting specialized statistical models, calculating effect sizes, and that kind of thing. R has a huge diversity of packages that are about more than just stats. There are packages for doing GIS and geospatial data science, working with genomic data, running code in parallel on high-performance computing systems, and making websites. Different research communities have all worked together to contribute to R's code base: there are R user communities in linguistics, ecology, social science, economics, pharmacology, and many others. 
 
 In contrast to R, SAS is more top-down and centralized. Yes, people do write SAS programs and macros that others can find and use, but the community of people doing that is much smaller and less active. So R tends to develop more quickly and be closer to the cutting edge of new methods. Usually this is an advantage but there are some downsides. For instance, SAS has basically one way to fit any given type of regression model. You can be confident that it was verified by qualified statisticians. But with R, there may be dozens of packages that fit that kind of model, all with slightly different implementations. It is hard for beginners to figure out which one is best to use. However, the longer R has been around, the more the good packages rise to the top.
+
+![](https://www.mitchelloharawild.com/blog/2018-07-10-hexwall_files/figure-html/final-1.png){width=60%}  
+*Just a few of the R packages out there*
 
 Currently, I think it is more important than ever to transition away from SAS and towards R. There are indications that SAS is winding down support for its desktop software and is moving toward a cloud-only model. This is great for their corporate customers but I don't think it is as good for researchers in government and academia. In my opinion, R is a more reliable option for the future. Another alternative is Python, which is probably more common in industry versus government and academia, and has a lot of users in the data science community rather than the stats community.  
 
@@ -71,7 +77,7 @@ All of that said, the point of this workshop is not to convert people from SAS t
 
 ## SAS procedures vs. R packages/functions: an overview table
 
-In many cases, a package in R is roughly equivalent to a procedure or `proc` in SAS. Here's a quick reference table I came up with that shows which SAS procedure corresponds to which package or function in R. There are a diversity of R packages and functions for each of these tasks but I am showing you my "favorite" or recommended alternatives in bold.
+In many cases, a package in R is roughly equivalent to a procedure or `proc` in SAS. Here's a quick reference table I came up with that shows which SAS procedure corresponds to which package or function in R. There are a diversity of R packages and functions for each of these tasks but I am showing you my "favorite" or recommended alternatives.
 
 ```{r, echo = FALSE}
 comptable <- read.csv('r_sas_comparison_table.csv')
