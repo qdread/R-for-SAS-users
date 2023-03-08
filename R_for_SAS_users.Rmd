@@ -630,6 +630,6 @@ proc glm data = oats_subset plots(unpack) = diagnostics;
 run;	
 ```
 
-- *Hint*: [The left hand side of the model formula will now be `gen + loc + gen:loc`.]{.spoiler}
+- *Hint*: [The right-hand side of the model formula will now be `gen + loc + gen:loc`.]{.spoiler}
 
 <b><font size="6">[Click here for answers](R_for_SAS_users_answers)</font></b>

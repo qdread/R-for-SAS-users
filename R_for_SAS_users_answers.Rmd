@@ -21,6 +21,8 @@ oats_subset <- oats %>%
   )
 ```
 
+You can separate multiple conditions inside `filter()` with either `,` or `&`.
+
 ### Exercise 3
 
 ```{r, eval = FALSE}
@@ -48,6 +50,8 @@ summary(oats_fit) # Displays model coefficients
 anova(oats_fit) # ANOVA table
 ```
 
+Here there is no need to explicitly specify that `gen` is a categorical variable as we do in SAS with `class gen;`. It is detected automatically. As in the lesson, you can see that the model fitting, regression diagnostics, display of coefficients, and ANOVA table must be called up with individual lines of code instead of all being folded into the same `proc` as we do in SAS.
+
 ### Exercise 6
 
 ```{r, eval = FALSE}
@@ -56,3 +60,5 @@ check_model(oats_fit_GxE) # Regression diagnostics
 summary(oats_fit_GxE) # Displays model coefficients
 anova(oats_fit_GxE) # ANOVA table
 ```
+
+This is actually a much better model than above. You can see here that the model formula with multiple predictors has the predictors separated with `+`. The interaction between two predictors is specified by putting a `:` between two predictors.

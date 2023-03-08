@@ -549,3 +549,152 @@ This was Lesson 1 in a series. Lesson 2 will cover:
 - post hoc comparisons (`lsmeans` statement in SAS, `emmeans()` function in R)
 - generation of reports and documents using RMarkdown
 
+\newpage
+
+# Exercises
+
+For some additional practice, here are a few exercises. These exercises ask you to "translate" some simple SAS code into the R equivalent. This will take you through the pipeline steps of importing a file, manipulating the data, calculating summary statistics, making a plot, and fitting a model. Each question builds off the previous one, so I recommend running each step in R sequentially. The exercises use [data from an oat breeding program](https://rdrr.io/cran/agridat/man/edwards.oats.html) originally published in *Crop Science* by Edwards & Jannink. 
+
+If you are starting on a fresh R session for these exercises, you will need to load `library(tidyverse)` and `library(easystats)` again first.
+
+Go to the following page for hints if you get stuck. Answers follow the hints.
+
+### Exercise 1
+
+Write the R code that does the same thing as this SAS code (import a CSV file from a URL to a dataset called `oats`).
+
+```
+filename csvFile url "https://github.com/qdread/R-for-SAS-users/raw/main/data/Edwards_oats.csv";
+proc import datafile = csvFile out = oats replace dbms = csv; run;
+```
+
+### Exercise 2
+
+Write the R code that does the same thing as this SAS code (create a subset of the `oats` data with only data from year 2001 and from the genotypes `gen` Belle, Blaze, Brawn, and Chaps).
+
+```
+data oats_subset; set oats;
+	where year = 2001 & gen in ('Belle', 'Blaze', 'Brawn', 'Chaps');
+run;
+```
+
+### Exercise 3
+
+Write the R code that does the same thing as this SAS code (find the mean and standard deviation of `yield` for each genotype `gen` in the data we subset in Exercise 2).
+
+```
+proc sql;
+	select 
+		gen,
+		avg(yield) as mean_yield,
+		std(yield) as stdev_yield
+	from oats_subset
+	group by gen;
+quit;
+```
+
+### Exercise 4
+
+Write the R code that does the same thing as this SAS code (make a boxplot of `yield` for each location `loc`, in the data we subset in Exercise 2). You will need to use `geom_boxplot()` to create this plot.
+
+```
+proc sgplot data = oats_subset;
+	vbox yield / group = gen;
+run;
+```
+
+### Exercise 5
+
+Write the R code that does the same thing as this SAS code (fit a linear model to `yield` as a function of genotype `gen`, using the data we subset in Exercise 2, output regression diagnostics, examine model coefficients, and generate ANOVA table).
+
+```
+proc glm data = oats_subset plots(unpack) = diagnostics;
+	class gen;
+	model yield = gen;
+run;	
+```
+
+### Exercise 6 (bonus exercise!)
+
+Include a term for environment `loc` and genotype by environment interaction `gen:loc` in the R linear model above, similar to the SAS code shown here.
+
+```
+proc glm data = oats_subset plots(unpack) = diagnostics;
+	class gen loc;
+	model yield = gen loc gen*loc;
+run;	
+```
+
+\newpage
+
+## Hints
+
+- *Exercise 2 hint*: Use `filter()` with two conditions, one for `year` and one for `gen`, separated by `,`.
+- *Exercise 3 hint*: Use `group_by()` and `summarize()`, with `mean()` for the mean and `sd()` for the standard deviation.
+- *Exercise 4 hint*: Use `aes(x = loc, y = yield)`.
+- *Exercise 5 hint*: You can still use `lm()` to fit the model, with `gen` as the predictor variable.
+- *Exercise 6 hint*: The right-hand side of the model formula will now be `gen + loc + gen:loc`.
+
+\newpage 
+
+## Answers
+
+### Exercise 1
+
+```{r, eval = FALSE}
+library(tidyverse)
+
+oats <- read_csv('https://github.com/qdread/R-for-SAS-users/raw/main/data/Edwards_oats.csv')
+```
+
+### Exercise 2
+
+```{r, eval = FALSE}
+oats_subset <- oats %>%
+  filter(
+    year == 2001, 
+    gen %in% c('Belle', 'Blaze', 'Brawn', 'Chaps')
+  )
+```
+
+You can separate multiple conditions inside `filter()` with either `,` or `&`.
+
+### Exercise 3
+
+```{r, eval = FALSE}
+oats_subset %>%
+  group_by(gen) %>%
+  summarize(
+    mean_yield = mean(yield),
+    stdev_yield = sd(yield)
+  )
+```
+
+### Exercise 4
+
+```{r, eval = FALSE}
+ggplot(oats_subset, aes(x = loc, y = yield)) +
+  geom_boxplot()
+```
+
+### Exercise 5
+
+```{r, eval = FALSE}
+oats_fit <- lm(yield ~ gen, data = oats_subset)
+check_model(oats_fit) # Regression diagnostics
+summary(oats_fit) # Displays model coefficients
+anova(oats_fit) # ANOVA table
+```
+
+Here there is no need to explicitly specify that `gen` is a categorical variable as we do in SAS with `class gen;`. It is detected automatically. As in the lesson, you can see that the model fitting, regression diagnostics, display of coefficients, and ANOVA table must be called up with individual lines of code instead of all being folded into the same `proc` as we do in SAS.
+
+### Exercise 6
+
+```{r, eval = FALSE}
+oats_fit_GxE <- lm(yield ~ gen + loc + gen:loc, data = oats_subset)
+check_model(oats_fit_GxE) # Regression diagnostics
+summary(oats_fit_GxE) # Displays model coefficients
+anova(oats_fit_GxE) # ANOVA table
+```
+
+This is actually a much better model than above. You can see here that the model formula with multiple predictors has the predictors separated with `+`. The interaction between two predictors is specified by putting a `:` between two predictors.
