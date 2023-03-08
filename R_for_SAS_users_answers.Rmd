@@ -1,0 +1,58 @@
+---
+title: "R for SAS Users Exercise Answers"
+output: html_document
+---
+
+### Exercise 1
+
+```{r, eval = FALSE}
+library(tidyverse)
+
+oats <- read_csv('https://github.com/qdread/R-for-SAS-users/raw/main/data/Edwards_oats.csv')
+```
+
+### Exercise 2
+
+```{r, eval = FALSE}
+oats_subset <- oats %>%
+  filter(
+    year == 2001, 
+    gen %in% c('Belle', 'Blaze', 'Brawn', 'Chaps')
+  )
+```
+
+### Exercise 3
+
+```{r, eval = FALSE}
+oats_subset %>%
+  group_by(gen) %>%
+  summarize(
+    mean_yield = mean(yield),
+    stdev_yield = sd(yield)
+  )
+```
+
+### Exercise 4
+
+```{r, eval = FALSE}
+ggplot(oats_subset, aes(x = loc, y = yield)) +
+  geom_boxplot()
+```
+
+### Exercise 5
+
+```{r, eval = FALSE}
+oats_fit <- lm(yield ~ gen, data = oats_subset)
+check_model(oats_fit) # Regression diagnostics
+summary(oats_fit) # Displays model coefficients
+anova(oats_fit) # ANOVA table
+```
+
+### Exercise 6
+
+```{r, eval = FALSE}
+oats_fit_GxE <- lm(yield ~ gen + loc + gen:loc, data = oats_subset)
+check_model(oats_fit_GxE) # Regression diagnostics
+summary(oats_fit_GxE) # Displays model coefficients
+anova(oats_fit_GxE) # ANOVA table
+```
