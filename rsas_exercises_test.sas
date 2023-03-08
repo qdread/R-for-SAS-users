@@ -17,3 +17,13 @@ quit;
 proc sgplot data = oats_subset;
 	vbox yield / group = gen;
 run;
+
+proc glm data = oats_subset plots(unpack) = diagnostics;
+	class gen;
+	model yield = gen;
+run;	
+
+proc glm data = oats_subset plots(unpack) = diagnostics;
+	class gen loc;
+	model yield = gen loc gen*loc;
+run;	
